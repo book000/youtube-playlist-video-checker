@@ -52,6 +52,9 @@ for playlist_id in playlists:
 
     with ydl:
         result = ydl.extract_info(url, False)
+        
+    if result is None:
+        continue
 
     with open("output.json", "w") as f:
         f.write(json.dumps(result))
