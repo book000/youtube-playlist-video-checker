@@ -3,3 +3,5 @@ venv
 config.json
 playlists.json
 already.json
+.env
+logs/

@@ -25,7 +25,7 @@ Notify Discord of newly added videos to multiple YouTube playlists.
 
 ```shell
 cd /path/to/
-python3 main.py
+python3 __main__.py
 ```
 
 The `config.json` file in the current directory will be read, so change to the root directory of the project in advance before executing.
