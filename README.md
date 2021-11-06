@@ -15,9 +15,10 @@ Notify Discord of newly added videos to multiple YouTube playlists.
 
 ## Configuration
 
-- Rewrite `config.sample.json` and rename to `config.json`.
-  - `discord_token`: Discord Bot token
-  - `discord_channel`: Discord Send to channel ID
+- Rewrite `sample.env` and rename to `.env`.
+  - `DISCORD_TOKEN`: Discord Bot token
+  - `DISCORD_CHANNEL_ID`: Discord Send to channel ID
+  - `GOOGLE_TOKEN`: Google Cloud Platform API key
 - Rewrite `playlists.sample.json` and rename to `playlists.json`.
   - Enter the ID of the playlist to check.
 
@@ -25,10 +26,10 @@ Notify Discord of newly added videos to multiple YouTube playlists.
 
 ```shell
 cd /path/to/
-python3 main.py
+python3 -m src
 ```
 
-The `config.json` file in the current directory will be read, so change to the root directory of the project in advance before executing.
+The `.env` file in the current directory will be read, so change to the root directory of the project in advance before executing.
 
 ## Warning / Disclaimer
 
