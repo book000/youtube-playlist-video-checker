@@ -56,7 +56,9 @@ for playlist_id in playlists:
     if result is None:
         continue
 
-    with open("output.json", "w") as f:
+    if not os.path.exists("output/"):
+        os.mkdir("output/")
+    with open("output/{playlist_id}.json".format(playlist_id=playlist_id), "w") as f:
         f.write(json.dumps(result))
 
     playlist_title = result["title"]
