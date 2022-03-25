@@ -126,6 +126,7 @@ def main():
                     ],
                     "timestamp": startTime
                 })
+            already[playlist].append(videoId)
 
     with open("already.json", "w") as f:
         f.write(json.dumps(already))
