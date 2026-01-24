@@ -13,7 +13,17 @@
 - 前提・仮定・不確実性を明示し、仮定を事実のように扱わない。
 
 ## プロジェクト概要
-- 目的: Notify Discord of newly added videos to multiple YouTube playlists.
+Python utility that monitors multiple YouTube playlists for new videos and posts notifications to a Discord channel.
+
+### 技術スタック
+- **言語**: Python 3.6+
+- **フレームワーク**: N, /, A
+- **パッケージマネージャー**: pip
+- **主要な依存関係**:
+  - google-api-python-client>=2.29.0
+  - python-dotenv>=0.19.1
+  - youtube-dl>=2021.2.10
+  - requests>=2.25.1
 
 ## 重要ルール
 - 会話言語: 日本語
@@ -42,28 +52,44 @@
 - TypeScript 使用時は `skipLibCheck` で回避しない。
 - 関数やインターフェースには docstring（JSDoc など）を記載する。
 
+### コーディング規約
+- **style**: Python standard
+- **type_checking**: Not configured
+
 ## 相談ルール
 - Codex CLI: 実装レビュー、局所設計、整合性確認に使う。
 - Gemini CLI: 外部仕様や最新情報の確認に使う。
 - 他エージェントの指摘は黙殺せず、採用または理由を明記して不採用とする。
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# 依存関係のインストール
-pip install -r requirements.txt
+# install
+pip3 install -U -r requirements.txt
 
-# 開発 / テスト / Lint は README を確認してください
+# dev
+python3 -m src
+
+# run
+python3 -m src (from project root)
+
 ```
 
-## アーキテクチャと主要ファイル
+### プロジェクト構造
+**ルートファイル:**
+- `requirements.txt`
+- `README.md`
+- `LICENSE`
 
 ## 実装パターン
+- 既存のコードパターンに従う。
+- プロジェクト固有の実装ガイドラインがある場合はそれに従う。
 
 ## テスト
 - 方針: 変更内容に応じてテストを追加する。
 
 ## ドキュメント更新ルール
 - 更新タイミング: 実装確定後、同一コミットまたは追加コミットで更新する。
+- README、API ドキュメント、コメント等は常に最新状態を保つ。
 
 ## 作業チェックリスト
 
@@ -94,3 +120,10 @@ pip install -r requirements.txt
 6. PR 本文の崩れがないことを確認する。
 
 ## リポジトリ固有
+- **note**: YouTube playlist monitor with Discord notifications
+- **configuration**: {'env_vars': ['DISCORD_TOKEN (required)', 'DISCORD_CHANNEL_ID (required)', 'GOOGLE_TOKEN (required)'], 'config_file': 'playlists.json (playlist IDs)'}
+- **execution**: Must run from project root to read .env
+**api_integrations:**
+  - YouTube Data API
+  - Discord Bot API
+- **disclaimer**: Developer not responsible for misuse

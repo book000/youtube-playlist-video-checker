@@ -1,7 +1,7 @@
 # GitHub Copilot Instructions
 
 ## プロジェクト概要
-- 目的: Notify Discord of newly added videos to multiple YouTube playlists.
+Python utility that monitors multiple YouTube playlists for new videos and posts notifications to a Discord channel.
 
 ## 共通ルール
 - 会話は日本語で行う。
@@ -11,8 +11,8 @@
 - 既存のプロジェクトルールがある場合はそれを優先する。
 
 ## 技術スタック
-- 言語: Python
-- パッケージマネージャー: pnpm 優先（ロックファイルに従う）。
+- 言語: Python 3.6+
+- パッケージマネージャー: pip
 
 ## コーディング規約
 - フォーマット: 既存設定（ESLint / Prettier / formatter）に従う。
@@ -23,12 +23,17 @@
 - TypeScript 使用時は strict 前提とし、`skipLibCheck` で回避しない。
 - 関数やインターフェースには docstring（JSDoc など）を記載する。
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# 依存関係のインストール
-pip install -r requirements.txt
+# install
+pip3 install -U -r requirements.txt
 
-# 開発 / テスト / Lint は README を確認してください
+# dev
+python3 -m src
+
+# run
+python3 -m src (from project root)
+
 ```
 
 ## テスト方針
@@ -39,5 +44,14 @@ pip install -r requirements.txt
 - ログに機密情報を出力しない。
 
 ## ドキュメント更新
+- 実装確定後、同一コミットまたは追加コミットで更新する。
+- README、API ドキュメント、コメント等は常に最新状態を保つ。
 
 ## リポジトリ固有
+- **note**: YouTube playlist monitor with Discord notifications
+- **configuration**: {'env_vars': ['DISCORD_TOKEN (required)', 'DISCORD_CHANNEL_ID (required)', 'GOOGLE_TOKEN (required)'], 'config_file': 'playlists.json (playlist IDs)'}
+- **execution**: Must run from project root to read .env
+**api_integrations:**
+  - YouTube Data API
+  - Discord Bot API
+- **disclaimer**: Developer not responsible for misuse

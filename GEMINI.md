@@ -15,7 +15,17 @@
 - 日本語と英数字の間には半角スペースを入れる。
 
 ## プロジェクト概要
-- 目的: Notify Discord of newly added videos to multiple YouTube playlists.
+Python utility that monitors multiple YouTube playlists for new videos and posts notifications to a Discord channel.
+
+### 技術スタック
+- **言語**: Python 3.6+
+- **フレームワーク**: N, /, A
+- **パッケージマネージャー**: pip
+- **主要な依存関係**:
+  - google-api-python-client>=2.29.0
+  - python-dotenv>=0.19.1
+  - youtube-dl>=2021.2.10
+  - requests>=2.25.1
 
 ## コーディング規約
 - フォーマット: 既存設定（ESLint / Prettier / formatter）に従う。
@@ -23,12 +33,17 @@
 - コメント言語: 日本語
 - エラーメッセージ: 英語
 
-## 開発コマンド
+### 開発コマンド
 ```bash
-# 依存関係のインストール
-pip install -r requirements.txt
+# install
+pip3 install -U -r requirements.txt
 
-# 開発 / テスト / Lint は README を確認してください
+# dev
+python3 -m src
+
+# run
+python3 -m src (from project root)
+
 ```
 
 ## 注意事項
@@ -37,3 +52,10 @@ pip install -r requirements.txt
 - 既存のプロジェクトルールがある場合はそれを優先する。
 
 ## リポジトリ固有
+- **note**: YouTube playlist monitor with Discord notifications
+- **configuration**: {'env_vars': ['DISCORD_TOKEN (required)', 'DISCORD_CHANNEL_ID (required)', 'GOOGLE_TOKEN (required)'], 'config_file': 'playlists.json (playlist IDs)'}
+- **execution**: Must run from project root to read .env
+**api_integrations:**
+  - YouTube Data API
+  - Discord Bot API
+- **disclaimer**: Developer not responsible for misuse

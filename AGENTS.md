@@ -25,3 +25,10 @@
 - ログに機密情報を出力しない。
 
 ## リポジトリ固有
+- **note**: YouTube playlist monitor with Discord notifications
+- **configuration**: {'env_vars': ['DISCORD_TOKEN (required)', 'DISCORD_CHANNEL_ID (required)', 'GOOGLE_TOKEN (required)'], 'config_file': 'playlists.json (playlist IDs)'}
+- **execution**: Must run from project root to read .env
+**api_integrations:**
+  - YouTube Data API
+  - Discord Bot API
+- **disclaimer**: Developer not responsible for misuse
