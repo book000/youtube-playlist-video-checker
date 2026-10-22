@@ -5,6 +5,9 @@ from googleapiclient.discovery import build
 
 from src import config, send_discord_message
 
+# YouTube Data API の videos.list で 1 回に指定できる ID の最大数
+VIDEOS_LIST_MAX_IDS = 50
+
 
 def get_playlist_items(youtube,
                        playlist_id):
@@ -28,9 +31,10 @@ def get_playlist_items(youtube,
 
 def get_videos_details(youtube,
                        new_videos: list[str]):
-    ret = []
     video_details_items = {}
-    for new_videos_temp in zip(*[iter(new_videos)]*50):
+    # videos.list の id パラメータは最大 50 件のため、端数も含めて 50 件ずつ分割して取得する
+    for i in range(0, len(new_videos), VIDEOS_LIST_MAX_IDS):
+        new_videos_temp = new_videos[i:i + VIDEOS_LIST_MAX_IDS]
         new_videos_details_request = youtube.videos().list(
             part="snippet, liveStreamingDetails",
             id=",".join(new_videos_temp)
@@ -40,12 +44,13 @@ def get_videos_details(youtube,
 
             for video_details in new_videos_details["items"]:
                 if video_details["snippet"]["liveBroadcastContent"] == "none":
-                    ret.append(video_details["id"])
                     video_details_items[video_details["id"]] = video_details
 
             new_videos_details_request = youtube.videos().list_next(
                 new_videos_details_request, new_videos_details)
-    return new_videos, video_details_items
+    # ライブ配信中・配信予定の動画を除いた ID を、渡された順序のまま返す
+    ret = [video_id for video_id in new_videos if video_id in video_details_items]
+    return ret, video_details_items
 
 
 def main():
