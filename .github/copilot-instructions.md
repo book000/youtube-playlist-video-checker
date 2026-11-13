@@ -21,6 +21,4 @@ Deliverables (commit messages, PR/Issue text, review comments, code comments, do
 
 - `str.format()` / `%` formatting instead of f-strings.
 - Direct `requests` POST to the Discord REST API instead of a library.
-- `requirements.txt` being UTF-16 encoded (pre-existing; mention only if a PR touches it).
-- `setuptools<81` in `requirements.txt` (`googleapiclient` imports `pkg_resources`).
 - Small test coverage; do not request tests unless the PR adds testable logic.

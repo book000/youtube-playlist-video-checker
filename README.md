@@ -9,7 +9,7 @@ The script checks each playlist through the YouTube Data API v3 and posts a Disc
 - A valid Discord bot token and a channel the bot can post messages to
 - A Google Cloud Platform API key with the YouTube Data API v3 enabled
 - Python 3.9+
-- The packages in [requirements.txt](requirements.txt), notably `google-api-python-client`, `python-dotenv` and `requests`. `setuptools<81` is pinned because `google-api-python-client` imports `pkg_resources`, which newer setuptools removed.
+- The packages in [requirements.txt](requirements.txt), notably `google-api-python-client`, `python-dotenv` and `requests`.
 
 ## Installation
 

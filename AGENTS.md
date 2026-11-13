@@ -18,7 +18,7 @@ Guidance for AI coding agents and contributors. `CLAUDE.md` imports this file, a
 There is no build step.
 
 ```bash
-pip3 install -U -r requirements.txt   # install dependencies (requirements.txt is UTF-16; pip reads it)
+pip3 install -U -r requirements.txt   # install dependencies
 python3 -m src                        # run (src/__main__.py:main)
 ruff check && ruff format --check     # lint / format check (config in ruff.toml)
 pytest                                # tests
@@ -53,7 +53,6 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 
 - Match the existing style: `snake_case` functions, standard library first, `str.format()` / `%` formatting. Do not convert to f-strings (`ruff.toml` ignores UP031/UP032 for this reason).
 - The code uses builtin generics (`list[str]`) and `str | None` with `from __future__ import annotations`, so Python 3.9+ is required (`ruff.toml` sets `target-version = "py39"`).
-- `requirements.txt` pins `setuptools<81` because `googleapiclient` imports `pkg_resources`, which newer setuptools removed.
 - If you change dependencies, runtime files or the run command, update `README.md` and this file.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/); branches follow [Conventional Branch](https://conventional-branch.github.io) short form (`feat/...`, `fix/...`).
 - Do not commit to Renovate PRs. Never commit secrets.
