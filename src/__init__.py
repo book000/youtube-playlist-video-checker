@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import datetime
-import json
 import logging
 import os
 from logging.handlers import TimedRotatingFileHandler
@@ -61,24 +60,3 @@ def send_discord_message(
     )
     logger.debug("response: {code}".format(code=response.status_code))
     logger.debug("response: {message}".format(message=response.text))
-
-
-def load_notified_ids() -> list:
-    logger.debug("load_notified_ids()")
-    notified_ids = []
-    if os.path.exists("notified_ids.json"):
-        with open("notified_ids.json", "r") as f:
-            notified_ids = json.load(f)
-    return notified_ids
-
-
-def add_notified_id(notified_id):
-    notified_ids = load_notified_ids()
-    notified_ids.append(notified_id)
-    save_notified_ids(notified_ids)
-
-
-def save_notified_ids(notified_ids: list):
-    logger.debug("save_notified_ids()")
-    with open("notified_ids.json", "w") as f:
-        f.write(json.dumps(notified_ids))
