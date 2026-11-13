@@ -38,9 +38,13 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 ## Structure
 
 - `src/__main__.py`: entry point. For each playlist it lists items (`get_playlist_items`), diffs against `already.json`, fetches video details (`get_videos_details`), and sends a Discord embed per new video.
+  A failed send is logged and skipped without recording the video ID, so it is retried on the next run.
 - `src/config.py`: loads `.env` and exposes `GOOGLE_TOKEN`, `DISCORD_TOKEN`, `DISCORD_CHANNEL_ID` via `getKey`.
 - `src/__init__.py`: `init_logger` (stream handler plus daily-rotating file handler under `logs/`, 30 backups) and `send_discord_message` (raw `requests` POST to the Discord REST API with a `Bot` token, not a Discord library).
+  `send_discord_message` sends the embed in the `embeds` array, retries HTTP 429 (up to 3 times, waiting the delay Discord requests, at most 60 seconds), and raises `requests.HTTPError` for responses with status 400 or above.
 - `tests/test_get_videos_details.py`: unit tests for `get_videos_details` with a mocked YouTube client.
+- `tests/test_send_discord_message.py`: unit tests for `send_discord_message` with mocked `requests.post` and `time.sleep` (payload shape, 429 retry and wait cap, HTTP error raising, token not logged).
+- `tests/test_main_send_failure.py`: tests that `main` does not record a video whose send failed in `already.json`, and that the first run records IDs without sending.
 
 ## Behavior to preserve
 

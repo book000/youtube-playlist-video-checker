@@ -1,9 +1,10 @@
 import json
 import os
 
+import requests
 from googleapiclient.discovery import build
 
-from src import config, send_discord_message
+from src import config, logger, send_discord_message
 
 # YouTube Data API limit on IDs per videos.list call
 VIDEOS_LIST_MAX_IDS = 50
@@ -120,26 +121,37 @@ def main():
                 startTime = video_details[videoId]["snippet"]["publishedAt"]
 
             if not init:
-                send_discord_message(
-                    config.DISCORD_TOKEN,
-                    config.DISCORD_CHANNEL_ID,
-                    "",
-                    {
-                        "title": title,
-                        "type": "rich",
-                        "url": "https://youtu.be/%s" % videoId,
-                        "fields": [
-                            {
-                                "name": "Playlist",
-                                "value": "`{}` in `{}`".format(
-                                    playlist_title, playlist_channel
-                                ),
-                            },
-                            {"name": "Uploader", "value": "`{}`".format(channelTitle)},
-                        ],
-                        "timestamp": startTime,
-                    },
-                )
+                try:
+                    send_discord_message(
+                        config.DISCORD_TOKEN,
+                        config.DISCORD_CHANNEL_ID,
+                        "",
+                        {
+                            "title": title,
+                            "type": "rich",
+                            "url": "https://youtu.be/%s" % videoId,
+                            "fields": [
+                                {
+                                    "name": "Playlist",
+                                    "value": "`{}` in `{}`".format(
+                                        playlist_title, playlist_channel
+                                    ),
+                                },
+                                {
+                                    "name": "Uploader",
+                                    "value": "`{}`".format(channelTitle),
+                                },
+                            ],
+                            "timestamp": startTime,
+                        },
+                    )
+                except requests.RequestException as e:
+                    logger.error(
+                        "Failed to send notification for video {video} in playlist {playlist}: {error}".format(
+                            video=videoId, playlist=playlist, error=e
+                        )
+                    )
+                    continue
             already[playlist].append(videoId)
 
     with open("already.json", "w") as f:
