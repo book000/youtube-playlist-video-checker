@@ -38,7 +38,7 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 ## Structure
 
 - `src/__main__.py`: entry point. For each playlist it lists items (`get_playlist_items`), diffs against `already.json`, fetches video details (`get_videos_details`), and sends a Discord embed per new video.
-  `main()` wraps `check_playlists()` (the per-playlist logic) and, on a `googleapiclient.errors.HttpError`, logs a credential-free line `YouTube API request failed: HTTP <status>[, reason: <codes>]` and exits 1 without writing `already.json`.
+  YouTube `HttpError` responses and empty playlist lookups are logged per playlist; processing continues and the command exits 1 if any playlist failed. Successful notifications are checkpointed immediately in `already.json`.
   The exception text embeds the request URI, which contains the Google API key (`describe_http_error` keeps only the status and `[A-Za-z_]+` reason codes), so it must never be logged or left to a traceback.
   A failed send is logged and skipped without recording the video ID, so it is retried on the next run.
 - `src/config.py`: loads `.env` and exposes `GOOGLE_TOKEN`, `DISCORD_TOKEN`, `DISCORD_CHANNEL_ID` via `getKey`.
@@ -47,7 +47,8 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 - `tests/test_get_videos_details.py`: unit tests for `get_videos_details` with a mocked YouTube client.
 - `tests/test_send_discord_message.py`: unit tests for `send_discord_message` with mocked `requests.post` and `time.sleep` (payload shape, 429 retry and wait cap, HTTP error raising, token not logged).
 - `tests/test_main_send_failure.py`: tests that `main` does not record a video whose send failed in `already.json`, and that the first run records IDs without sending.
-- `tests/test_main_youtube_error.py`: tests that an `HttpError` from each YouTube call site yields exit code 1, a status/reason-only log message with no API key (synthetic key), no exception chaining, and an unchanged `already.json`.
+- `tests/test_main_youtube_error.py`: tests that an `HttpError` from each YouTube call site yields exit code 1, a status/reason-only log message with no API key (synthetic key), no exception chaining, and unchanged prior state when the request fails.
+- `tests/test_playlist_failure_isolation.py`: tests that playlist failures do not stop later playlists or discard successful notifications, and that a failed first run remains uninitialized.
 
 ## Behavior to preserve
 

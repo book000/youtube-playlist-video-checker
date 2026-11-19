@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sys
+import tempfile
 
 import requests
 from googleapiclient.discovery import build
@@ -82,107 +83,140 @@ def check_playlists():
     with open("playlists.json", "r") as f:
         playlists = json.load(f)
 
+    failed = False
     for playlist in playlists:
-        playlist_details = (
-            youtube.playlists().list(part="snippet", id=playlist).execute()
-        )
-        playlist_title = playlist_details["items"][0]["snippet"]["title"]
-        playlist_channel = playlist_details["items"][0]["snippet"]["channelTitle"]
-
-        init = False
-        if playlist not in already:
-            init = True
-            already[playlist] = []
-
-        new_videos = []
-
-        videos = get_playlist_items(youtube, playlist)
-        for video in videos:
-            if "videoOwnerChannelTitle" not in video:
-                continue
-
-            videoId = video["resourceId"]["videoId"]
-            title = video["title"]
-            videoUploader = video["videoOwnerChannelTitle"]
-            publishedAt = video["publishedAt"]
-
-            if videoId in already[playlist] or videoId in new_videos:
-                continue
-            new_videos.append(videoId)
-
-            print(
-                "{title} - {uploader} ({date})".format(
-                    title=title, uploader=videoUploader, date=publishedAt
+        try:
+            if not check_playlist(youtube, playlist, already):
+                failed = True
+        except HttpError as e:
+            logger.error(
+                "YouTube API request failed: {failure}".format(
+                    failure=describe_http_error(e)
                 )
             )
+            failed = True
+    return not failed
 
-        if len(new_videos) == 0:
+
+def save_already(already):
+    path = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=".", delete=False) as f:
+            path = f.name
+            json.dump(already, f)
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(path, "already.json")
+    finally:
+        if path and os.path.exists(path):
+            os.unlink(path)
+
+
+def check_playlist(youtube, playlist, already):
+    playlist_details = youtube.playlists().list(part="snippet", id=playlist).execute()
+    if not playlist_details.get("items"):
+        logger.error("Playlist not found: {playlist}".format(playlist=playlist))
+        return False
+    playlist_title = playlist_details["items"][0]["snippet"]["title"]
+    playlist_channel = playlist_details["items"][0]["snippet"]["channelTitle"]
+
+    init = playlist not in already
+    seen = already.get(playlist, [])
+
+    new_videos = []
+
+    videos = get_playlist_items(youtube, playlist)
+    for video in videos:
+        if "videoOwnerChannelTitle" not in video:
             continue
 
-        [notify_new_videos, video_details] = get_videos_details(youtube, new_videos)
+        videoId = video["resourceId"]["videoId"]
+        title = video["title"]
+        videoUploader = video["videoOwnerChannelTitle"]
+        publishedAt = video["publishedAt"]
 
-        for videoId in notify_new_videos:
-            if videoId not in video_details:
-                continue
-            title = video_details[videoId]["snippet"]["title"]
-            channelTitle = video_details[videoId]["snippet"]["channelTitle"]
-            if "liveStreamingDetails" in video_details[videoId]:
-                if (
+        if videoId in seen or videoId in new_videos:
+            continue
+        new_videos.append(videoId)
+
+        print(
+            "{title} - {uploader} ({date})".format(
+                title=title, uploader=videoUploader, date=publishedAt
+            )
+        )
+
+    if len(new_videos) == 0:
+        if init:
+            already[playlist] = seen
+            save_already(already)
+        return True
+
+    [notify_new_videos, video_details] = get_videos_details(youtube, new_videos)
+
+    for videoId in notify_new_videos:
+        if videoId not in video_details:
+            continue
+        title = video_details[videoId]["snippet"]["title"]
+        channelTitle = video_details[videoId]["snippet"]["channelTitle"]
+        if "liveStreamingDetails" in video_details[videoId]:
+            if "scheduledStartTime" in video_details[videoId]["liveStreamingDetails"]:
+                startTime = video_details[videoId]["liveStreamingDetails"][
                     "scheduledStartTime"
-                    in video_details[videoId]["liveStreamingDetails"]
-                ):
-                    startTime = video_details[videoId]["liveStreamingDetails"][
-                        "scheduledStartTime"
-                    ]
-                else:
-                    startTime = video_details[videoId]["liveStreamingDetails"][
-                        "actualStartTime"
-                    ]
+                ]
             else:
-                startTime = video_details[videoId]["snippet"]["publishedAt"]
+                startTime = video_details[videoId]["liveStreamingDetails"][
+                    "actualStartTime"
+                ]
+        else:
+            startTime = video_details[videoId]["snippet"]["publishedAt"]
 
-            if not init:
-                try:
-                    send_discord_message(
-                        config.DISCORD_TOKEN,
-                        config.DISCORD_CHANNEL_ID,
-                        "",
-                        {
-                            "title": title,
-                            "type": "rich",
-                            "url": "https://youtu.be/%s" % videoId,
-                            "fields": [
-                                {
-                                    "name": "Playlist",
-                                    "value": "`{}` in `{}`".format(
-                                        playlist_title, playlist_channel
-                                    ),
-                                },
-                                {
-                                    "name": "Uploader",
-                                    "value": "`{}`".format(channelTitle),
-                                },
-                            ],
-                            "timestamp": startTime,
-                        },
+        if not init:
+            try:
+                send_discord_message(
+                    config.DISCORD_TOKEN,
+                    config.DISCORD_CHANNEL_ID,
+                    "",
+                    {
+                        "title": title,
+                        "type": "rich",
+                        "url": "https://youtu.be/%s" % videoId,
+                        "fields": [
+                            {
+                                "name": "Playlist",
+                                "value": "`{}` in `{}`".format(
+                                    playlist_title, playlist_channel
+                                ),
+                            },
+                            {
+                                "name": "Uploader",
+                                "value": "`{}`".format(channelTitle),
+                            },
+                        ],
+                        "timestamp": startTime,
+                    },
+                )
+            except requests.RequestException as e:
+                logger.error(
+                    "Failed to send notification for video {video} in playlist {playlist}: {error}".format(
+                        video=videoId, playlist=playlist, error=e
                     )
-                except requests.RequestException as e:
-                    logger.error(
-                        "Failed to send notification for video {video} in playlist {playlist}: {error}".format(
-                            video=videoId, playlist=playlist, error=e
-                        )
-                    )
-                    continue
-            already[playlist].append(videoId)
+                )
+                continue
+        seen.append(videoId)
+        if not init:
+            save_already(already)
 
-    with open("already.json", "w") as f:
-        f.write(json.dumps(already))
+    if init:
+        already[playlist] = seen
+        save_already(already)
+    return True
 
 
 def main():
     failure = None
     try:
-        check_playlists()
+        if not check_playlists():
+            sys.exit(1)
     except HttpError as e:
         failure = describe_http_error(e)
     # Exit outside the except block so the HttpError, whose message holds the
