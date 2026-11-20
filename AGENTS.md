@@ -33,11 +33,13 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 - `.env` (loaded in `src/config.py`). Each key is required; a missing one logs `critical` and calls `sys.exit(1)`: `GOOGLE_TOKEN` (YouTube Data API v3 key), `DISCORD_TOKEN` (bot token), `DISCORD_CHANNEL_ID` (target channel).
 - `playlists.json`: JSON array of playlist IDs (see `playlists.sample.json`).
 - `already.json`: state written by the app, mapping each playlist ID to the video IDs already announced. Do not hand-edit while running.
-- `.env`, `playlists.json`, `already.json` and `logs/` are git-ignored. Never commit real tokens or state.
+- `already.json.lock`: lock file created by the app next to `already.json` (see `single_instance_lock`). Never delete it while a run is in progress.
+- `.env`, `playlists.json`, `already.json`, `already.json.lock` and `logs/` are git-ignored. Never commit real tokens or state.
 
 ## Structure
 
 - `src/__main__.py`: entry point. For each playlist it lists items (`get_playlist_items`), diffs against `already.json`, fetches video details (`get_videos_details`), and sends a Discord embed per new video.
+  `single_instance_lock()` takes `fcntl.flock` (`LOCK_EX | LOCK_NB`) on `already.json.lock` in the working directory and is held for the whole run (read state, YouTube, Discord, persist). If another process holds it, `main` logs `Another instance is already running; exiting` and exits 1; if the lock file cannot be opened or locked it logs `Cannot acquire the instance lock: <error>` and exits 1. The kernel releases the lock on process exit, so a crash leaves no stale lock. POSIX only.
   YouTube `HttpError` responses and empty playlist lookups are logged per playlist; processing continues and the command exits 1 if any playlist failed. Successful notifications are checkpointed immediately in `already.json`.
   The exception text embeds the request URI, which contains the Google API key (`describe_http_error` keeps only the status and `[A-Za-z_]+` reason codes), so it must never be logged or left to a traceback.
   A failed send is logged and skipped without recording the video ID, so it is retried on the next run.
@@ -48,13 +50,17 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 - `tests/test_send_discord_message.py`: unit tests for `send_discord_message` with mocked `requests.post` and `time.sleep` (payload shape, 429 retry and wait cap, HTTP error raising, token not logged).
 - `tests/test_main_send_failure.py`: tests that `main` does not record a video whose send failed in `already.json`, and that the first run records IDs without sending.
 - `tests/test_main_youtube_error.py`: tests that an `HttpError` from each YouTube call site yields exit code 1, a status/reason-only log message with no API key (synthetic key), no exception chaining, and unchanged prior state when the request fails.
+- `tests/test_save_already.py`: tests that `save_already` writes atomically: success leaves only `already.json`, and `json.dump`/`fsync`/`os.replace` failures keep the prior state and leave no temp file.
+- `tests/test_single_instance_lock.py`: tests that a lock held by another fd or a competing subprocess makes `main` exit 1 without reading state or calling YouTube/Discord, that the lock is released after the body or exit, that open/lock errors are reported, and that a body `OSError` is not reported as a lock error.
 - `tests/test_playlist_failure_isolation.py`: tests that playlist failures do not stop later playlists or discard successful notifications, and that a failed first run remains uninitialized.
 
 ## Behavior to preserve
 
 - Silent first run: when a playlist is not yet in `already.json` (`init = True`), its existing videos are recorded but NOT sent to Discord. This prevents announcing the whole backlog.
 - Live and upcoming entries are excluded: `get_videos_details` keeps only items whose `liveBroadcastContent == "none"`, so premieres and live streams are not announced until they become regular videos.
-- Announce exactly once: idempotency comes solely from `already.json`. Any change to when IDs are appended must keep this intact.
+- Announce exactly once in normal operation: a video is not announced twice while runs complete and persist their state, and that idempotency comes solely from `already.json`. Any change to when IDs are appended must keep this intact. The crash window between Discord accepting a message and `already.json` being updated is the at-least-once limitation described below.
+- Keep the whole run inside `single_instance_lock()` so overlapping runs cannot race on `already.json`.
+- Delivery is at-least-once, not exactly-once, across a crash between Discord accepting a message and `already.json` being updated: the video is announced again on the next run. This is a documented limitation.
 - Keep the `list_next` pagination loops in the YouTube fetch code, and send Discord messages through `send_discord_message`.
 
 ## Conventions

@@ -1,3 +1,5 @@
+import contextlib
+import fcntl
 import json
 import os
 import re
@@ -12,6 +14,8 @@ from src import config, logger, send_discord_message
 
 # YouTube Data API limit on IDs per videos.list call
 VIDEOS_LIST_MAX_IDS = 50
+
+LOCK_PATH = "already.json.lock"
 
 
 def get_playlist_items(youtube, playlist_id):
@@ -96,6 +100,38 @@ def check_playlists():
             )
             failed = True
     return not failed
+
+
+class AlreadyRunningError(Exception):
+    """Another process holds the instance lock."""
+
+
+class InstanceLockError(Exception):
+    """The instance lock could not be acquired for a reason other than contention."""
+
+
+@contextlib.contextmanager
+def single_instance_lock():
+    """Hold an exclusive advisory lock on LOCK_PATH for the duration of the block.
+
+    Raises AlreadyRunningError if another process holds the lock and
+    InstanceLockError if the lock file cannot be opened or locked. The kernel
+    releases the lock when the process exits, so a crash leaves no stale lock.
+    The lock file is intentionally never deleted: removing it would let a second
+    process lock a different inode.
+    """
+    with contextlib.ExitStack() as stack:
+        try:
+            lock_file = stack.enter_context(open(LOCK_PATH, "a"))
+        except OSError as e:
+            raise InstanceLockError(str(e)) from e
+        try:
+            fcntl.flock(lock_file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError as e:
+            raise AlreadyRunningError() from e
+        except OSError as e:
+            raise InstanceLockError(str(e)) from e
+        yield
 
 
 def save_already(already):
@@ -212,7 +248,7 @@ def check_playlist(youtube, playlist, already):
     return True
 
 
-def main():
+def run_checks():
     failure = None
     try:
         if not check_playlists():
@@ -223,6 +259,20 @@ def main():
     # API key, is not chained onto SystemExit.
     if failure is not None:
         logger.error("YouTube API request failed: {failure}".format(failure=failure))
+        sys.exit(1)
+
+
+def main():
+    lock_failure = None
+    try:
+        with single_instance_lock():
+            run_checks()
+    except AlreadyRunningError:
+        lock_failure = "Another instance is already running; exiting"
+    except InstanceLockError as e:
+        lock_failure = "Cannot acquire the instance lock: {error}".format(error=e)
+    if lock_failure is not None:
+        logger.error(lock_failure)
         sys.exit(1)
 
 

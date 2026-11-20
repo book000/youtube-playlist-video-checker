@@ -36,6 +36,9 @@ Run it from the project root: `playlists.json`, `already.json` and the `logs/` d
 - `already.json` is created automatically and records the video IDs already announced for each playlist, so each video is announced only once.
 - The first run for a playlist only records its existing videos and does not post them to Discord.
 - Live streams and premieres are skipped until they become regular videos.
+- `already.json.lock` is created next to `already.json` and holds an exclusive lock for the whole run, so overlapping cron runs do not run at once: a second run exits with code 1 and logs an error. The lock is released automatically when the process exits, even after a crash.
+- Delivery is at-least-once in one narrow window: if the process crashes after Discord accepts a message but before `already.json` is updated, that video is announced again on the next run.
+- The lock uses `fcntl.flock`, so it is POSIX only (Linux/macOS).
 
 ## Warning / Disclaimer
 

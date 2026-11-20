@@ -6,3 +6,4 @@ already.json
 .env
 logs/
 output
+already.json.lock
