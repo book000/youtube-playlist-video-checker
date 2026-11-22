@@ -1,5 +1,5 @@
-# The code targets Python 3.9+ (see AGENTS.md)
-target-version = "py39"
+# The code targets Python 3.10+ (see AGENTS.md)
+target-version = "py310"
 
 [lint]
 # Keep str.format() / % formatting; do not churn into f-strings (see AGENTS.md)

@@ -25,6 +25,7 @@ pytest                                # tests
 ```
 
 CI (`.github/workflows/python-ci.yml`, reusable workflow from `book000/templates`) runs `python -m compileall`, `ruff check`, `ruff format --check`, and `pytest`.
+CI uses the Python version in `.python-version`, which must be kept in step with the declared minimum (`README.md`, `ruff.toml` and this file).
 
 Run from the repository root: `playlists.json`, `already.json` and `logs/` are resolved against the current working directory. `.env` is located by `python-dotenv` searching upward from `src/`.
 
@@ -66,7 +67,7 @@ Run from the repository root: `playlists.json`, `already.json` and `logs/` are r
 ## Conventions
 
 - Match the existing style: `snake_case` functions, standard library first, `str.format()` / `%` formatting. Do not convert to f-strings (`ruff.toml` ignores UP031/UP032 for this reason).
-- The code uses builtin generics (`list[str]`) and `str | None` with `from __future__ import annotations`, so Python 3.9+ is required (`ruff.toml` sets `target-version = "py39"`).
+- The code uses builtin generics (`list[str]`) and `str | None` with `from __future__ import annotations`, so Python 3.10+ is required: `ruff.toml` sets `target-version = "py310"`, `google-api-python-client` and `requests` need Python 3.10+, and CI runs on the version in `.python-version`.
 - If you change dependencies, runtime files or the run command, update `README.md` and this file.
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org/); branches follow [Conventional Branch](https://conventional-branch.github.io) short form (`feat/...`, `fix/...`).
 - Do not commit to Renovate PRs. Never commit secrets.
