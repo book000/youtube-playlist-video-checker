@@ -14,7 +14,7 @@ def init_logger(child_name: str | None = None) -> logging.Logger:
     _logger = logging.getLogger("youtube-playlist-video-checker")
     if child_name is not None:
         return _logger.getChild(child_name)
-    dt = datetime.datetime.now().date()
+    dt = datetime.datetime.now(datetime.timezone.utc).astimezone().date()
     date_time = dt.strftime("%Y-%m-%d")
 
     if not os.path.exists("logs/"):

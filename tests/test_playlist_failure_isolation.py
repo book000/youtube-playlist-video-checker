@@ -36,6 +36,83 @@ def details(video_ids):
 
 
 class TestPlaylistFailureIsolation(unittest.TestCase):
+    def test_unavailable_playlist_remains_uninitialized_but_empty_playlist_is_saved(
+        self,
+    ):
+        with tempfile.TemporaryDirectory() as directory:
+            original = os.getcwd()
+            self.addCleanup(os.chdir, original)
+            os.chdir(directory)
+            with open("playlists.json", "w") as f:
+                json.dump(["unavailable", "empty"], f)
+            youtube = mock.MagicMock()
+            youtube.playlists.return_value.list.return_value.execute.side_effect = [
+                {"items": []},
+                {"items": [{"snippet": {"title": "t", "channelTitle": "c"}}]},
+            ]
+            with (
+                mock.patch.object(app, "build", return_value=youtube),
+                mock.patch.object(app, "get_playlist_items", return_value=[]) as items,
+                mock.patch.object(app, "get_videos_details") as video_details,
+                mock.patch.object(app, "send_discord_message") as sender,
+                self.assertLogs(app.logger, "ERROR") as logs,
+                self.assertRaises(SystemExit) as raised,
+            ):
+                app.main()
+
+            self.assertEqual(raised.exception.code, 1)
+            self.assertEqual(
+                [record.getMessage() for record in logs.records],
+                ["Playlist not found: unavailable"],
+            )
+            items.assert_called_once_with(youtube, "empty")
+            video_details.assert_not_called()
+            sender.assert_not_called()
+            with open("already.json") as f:
+                self.assertEqual(json.load(f), {"empty": []})
+
+    def test_later_video_details_failure_preserves_progress_and_retries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            original = os.getcwd()
+            self.addCleanup(os.chdir, original)
+            os.chdir(directory)
+            with open("playlists.json", "w") as f:
+                json.dump(["first", "later"], f)
+            with open("already.json", "w") as f:
+                json.dump({"first": [], "later": []}, f)
+            youtube = mock.MagicMock()
+            youtube.playlists.return_value.list.return_value.execute.return_value = {
+                "items": [{"snippet": {"title": "t", "channelTitle": "c"}}]
+            }
+            error = HttpError(httplib2.Response({"status": 403}), b"{}")
+            with (
+                mock.patch.object(app, "build", return_value=youtube),
+                mock.patch.object(
+                    app, "get_playlist_items", side_effect=lambda _, p: [item(p)]
+                ),
+                mock.patch.object(
+                    app,
+                    "get_videos_details",
+                    side_effect=[details(["first"]), error, details(["later"])],
+                ),
+                mock.patch.object(app, "send_discord_message") as sender,
+                self.assertLogs(app.logger, "ERROR"),
+            ):
+                with self.assertRaises(SystemExit) as raised:
+                    app.main()
+                self.assertEqual(raised.exception.code, 1)
+                with open("already.json") as f:
+                    self.assertEqual(json.load(f), {"first": ["first"], "later": []})
+                app.main()
+
+            self.assertEqual(sender.call_count, 2)
+            self.assertEqual(
+                [call.args[3]["url"] for call in sender.call_args_list],
+                ["https://youtu.be/first", "https://youtu.be/later"],
+            )
+            with open("already.json") as f:
+                self.assertEqual(json.load(f), {"first": ["first"], "later": ["later"]})
+
     def test_failures_do_not_lose_progress_or_stop_later_playlists(self):
         with tempfile.TemporaryDirectory() as directory:
             original = os.getcwd()
