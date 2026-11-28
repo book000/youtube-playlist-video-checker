@@ -1,4 +1,4 @@
-# Runs the Python syntax check, ruff and pytest. Uses .python-version for the Python version if present
+# Runs the Python syntax check, ruff and pytest on the supported minimum and current interpreter.
 
 name: Python CI
 
@@ -15,5 +15,31 @@ on:
 
 jobs:
   python-ci:
-    name: Python CI
+    name: Python 3.15 / python-ci
     uses: book000/templates/.github/workflows/reusable-python-ci.yml@master
+    with:
+      python-version: "3.15"
+
+  # The reusable workflow always runs on ubuntu-latest (26.04), which has no Python 3.9 build for setup-python.
+  # Run the minimum-version check on ubuntu-24.04 instead.
+  python-min:
+    name: Python 3.9 / python-ci
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: "3.9"
+      - run: python -m pip install -r requirements.txt pytest
+      - run: python -m compileall -q -x '/(\.git|\.venv|venv|node_modules)/' .
+      - uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          args: check
+      - uses: astral-sh/ruff-action@278981a28ce3188b1e39527901f38254bf3aac89 # v4.1.0
+        with:
+          args: format --check
+      - run: python -m pytest
