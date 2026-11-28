@@ -24,7 +24,7 @@ jobs:
   # Run the minimum-version check on ubuntu-24.04 instead.
   python-min:
     name: Python 3.9 / python-ci
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
